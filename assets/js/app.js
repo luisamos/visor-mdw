@@ -55,7 +55,7 @@ import * as bootstrap from 'bootstrap';
 
 
 
-  // Applying perfect-scrollbar 
+  // Applying perfect-scrollbar
   if (document.querySelector('.sidebar .sidebar-body')) {
     const sidebarBodyScroll = new PerfectScrollbar('.sidebar-body');
   }
@@ -64,7 +64,7 @@ import * as bootstrap from 'bootstrap';
 
   // Sidebar toggle to sidebar-folded
   const sidebarTogglers = document.querySelectorAll('.sidebar-toggler');
-  // there are two sidebar togglers. 
+  // there are two sidebar togglers.
   // 1: on sidebar - for min-width 992px (laptop, desktop) 
   // 2: on navbar - for max-width 991px (mobile phone, tablet)
   if (sidebarTogglers.length) {
@@ -95,7 +95,7 @@ import * as bootstrap from 'bootstrap';
 
   //  sidebar-folded on min-width:992px and max-width: 1199px (in lg only not in xl)
   // Warning!!! this results apex chart width issue
-  // 
+  //
   // const desktopMedium = window.matchMedia('(min-width:992px) and (max-width: 1199px)');
   // function iconSidebar() {
   //   if (desktopMedium.matches) {

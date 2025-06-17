@@ -2,7 +2,7 @@
   "name": "visor-mdw",
   "version": "1.0.0",
   "scripts": {
-    "start": "vite --host",
+    "start": "vite",
     "build": "vite build",
     "serve": "vite preview --host"
   },

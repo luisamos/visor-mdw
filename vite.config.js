@@ -1,11 +1,14 @@
-export default {
+// vite.config.js
+import { defineConfig } from 'vite'
+
+export default defineConfig({
   optimizeDeps: {
     include: ['ol'],
   },
   build: {
     sourcemap: true,
     manifest: true,
-    chunkSizeWarningLimit: 100000,       
+    chunkSizeWarningLimit: 100000,
   },
   preview: {
     port: 81,
@@ -14,7 +17,7 @@ export default {
     global: 'globalThis'
   },
   server: {
-    cors: true,
+    host: '127.0.0.2',
     port: 81,
   }
-}
+});
