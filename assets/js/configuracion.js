@@ -1,5 +1,5 @@
 import * as bootstrap from 'bootstrap';
-const IS_DEV = true;
+const IS_DEV = false;
 
 global.activoInformacion;
 function direccionWeb() {
@@ -19,7 +19,7 @@ export const centroide3857 = [-8009512.641541751, -1520541.7489204113],
     direccionServicioWFS = direccionWeb() + '/servicio/wfs?',
     //direccionServicioMapCache= 'http://209.45.78.210:9100/cgi-bin/mapcache/?',
     direccionServicioMapCache = direccionWeb() + '/cgi-bin/mapcache/?',
-    direccionApiGIS = (IS_DEV) ? 'http://127.0.0.2:5000/' : 'http://209.45.78.210:5000/',
+    direccionApiGIS = (IS_DEV) ? 'http://127.0.0.1:5001/' : 'http://209.45.78.210:9101/',
     formatoPNG = 'image/png',
     formatoJPEG = 'image/jpeg',
     formatoJson = 'application/json',

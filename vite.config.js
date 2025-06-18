@@ -2,13 +2,21 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  optimizeDeps: {
-    include: ['ol'],
-  },
+  base: '/visor/',
   build: {
+    outDir: 'dist',
     sourcemap: true,
     manifest: true,
     chunkSizeWarningLimit: 100000,
+    assetsInclude: ['./json/datos3857.json'],
+    rollupOptions: {
+      input: {
+        main: 'index.html'
+      }
+    }
+  },
+  optimizeDeps: {
+    include: ['ol'],
   },
   preview: {
     port: 81,
@@ -17,7 +25,7 @@ export default defineConfig({
     global: 'globalThis'
   },
   server: {
-    host: '127.0.0.2',
-    port: 81,
+    host: '0.0.0.0',
+    port: 5173,
   }
 });
