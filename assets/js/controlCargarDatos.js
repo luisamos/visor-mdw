@@ -1,6 +1,40 @@
 import shp from "shpjs";
 import { direccionApiGIS, mostrarToast } from "./configuracion";
 
+const configuracionCapas = {
+  "01": {
+    path: "sectores",
+    campos: [
+      { id: "cod_sector", payloadKey: "codigoSector", label: "COD_SECTOR" },
+    ],
+    columnasResumen: [{ key: "codSector", titulo: "Sector" }],
+  },
+  "02": {
+    path: "manzanas",
+    campos: [
+      { id: "cod_sector", payloadKey: "codigoSector", label: "COD_SECTOR" },
+      { id: "cod_mzna", payloadKey: "codigoManzana", label: "COD_MZNA" },
+    ],
+    columnasResumen: [
+      { key: "codSector", titulo: "Sector" },
+      { key: "codManzana", titulo: "Manzana" },
+    ],
+  },
+  "03": {
+    path: "lotes",
+    campos: [
+      { id: "cod_sector", payloadKey: "codigoSector", label: "COD_SECTOR" },
+      { id: "cod_mzna", payloadKey: "codigoManzana", label: "COD_MZNA" },
+      { id: "cod_lote", payloadKey: "codigoLote", label: "COD_LOTE" },
+    ],
+    columnasResumen: [
+      { key: "codSector", titulo: "Sector" },
+      { key: "codManzana", titulo: "Manzana" },
+      { key: "codLote", titulo: "Lote" },
+    ],
+  },
+};
+
 const columnasExcluidas = [
   "fid",
   "id",
@@ -30,6 +64,15 @@ btnCargarArchivoZip.addEventListener("click", async () => {
     mostrarToast("Por favor selecciona un archivo .zip", "error");
     return;
   }
+
+  const configActual = configuracionCapas[tablasGeograficas.value];
+  if (!configActual) {
+    mostrarToast(
+      "La capa seleccionada no está configurada para carga masiva.",
+      "warning"
+    );
+    return;
+  }
   btnCargarArchivoZip.disabled = true;
   nombreCarpetaActual = null;
   ultimoPayloadValidacion = null;
@@ -47,10 +90,13 @@ btnCargarArchivoZip.addEventListener("click", async () => {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch(`${direccionApiGIS}subir_shapefile`, {
-      method: "POST",
-      body: formData,
-    });
+    const response = await fetch(
+      `${direccionApiGIS}${configActual.path}/subir_shapefile`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
 
     if (!response.ok) throw new Error("Error al subir el archivo");
 
@@ -95,31 +141,32 @@ function mostrarCampos(columnas) {
     (col) => !columnasExcluidas.includes(col.toLowerCase())
   );
 
-  const tipo = tablasGeograficas.value;
-  let camposFijos = [];
-
-  if (tipo === "01") camposFijos = ["cod_sector"];
-  else if (tipo === "02") camposFijos = ["cod_sector", "cod_mzna"];
-  else if (tipo === "03") camposFijos = ["cod_sector", "cod_mzna", "cod_lote"];
+  const configActual = configuracionCapas[tablasGeograficas.value];
+  const camposFijos = configActual?.campos ?? [];
 
   columnasArchivoShape.innerHTML = "";
   resultadoValidacion.innerHTML = "";
   btnConfirmarCarga.style.display = "none";
 
-  camposFijos.forEach((campo, i) => {
+  camposFijos.forEach((campo) => {
     const row = document.createElement("div");
     row.className = "row mb-2 align-items-center";
 
     const opciones = columnasFiltradas
-      .map((col) => `<option value="${col}">${col}</option>`)
+      .map((col) => {
+        const seleccionado = col.toLowerCase() === campo.id.toLowerCase();
+        return `<option value="${col}" ${
+          seleccionado ? "selected" : ""
+        }>${col}</option>`;
+      })
       .join("");
 
     row.innerHTML = `
         <div class="col-md-6">
-            <input type="text" class="form-control" value="${campo}" readonly>
+            <input type="text" class="form-control" value="${campo.label}" readonly>
         </div>
         <div class="col-md-6">
-            <select class="form-select" name="map_${campo}">
+            <select class="form-select" name="map_${campo.id}">
             <option value="">[Elegir]</option>
             ${opciones}
             </select>
@@ -128,6 +175,17 @@ function mostrarCampos(columnas) {
 
     columnasArchivoShape.appendChild(row);
   });
+
+  const selects = columnasArchivoShape.querySelectorAll('select[name^="map_"]');
+  const todosSeleccionados =
+    selects.length > 0 &&
+    Array.from(selects).every((select) => Boolean(select.value));
+
+  if (todosSeleccionados) {
+    selects[selects.length - 1].dispatchEvent(
+      new Event("change", { bubbles: true })
+    );
+  }
 }
 
 columnasArchivoShape.addEventListener("change", async () => {
@@ -158,16 +216,28 @@ btnConfirmarCarga.addEventListener("click", async () => {
   btnConfirmarCarga.disabled = true;
 
   try {
+    const configActual = configuracionCapas[tablasGeograficas.value];
+    if (!configActual) {
+      mostrarToast(
+        "La capa seleccionada no está configurada para la carga.",
+        "warning"
+      );
+      return;
+    }
+
     const payload = {
       nombreCarpeta: nombreCarpetaActual,
       id_usuario: 1,
     };
 
-    const cargarResp = await fetch(`${direccionApiGIS}cargar_shapefile`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const cargarResp = await fetch(
+      `${direccionApiGIS}${configActual.path}/cargar_shapefile`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
 
     if (!cargarResp.ok) throw new Error("Error al cargar los datos");
 
@@ -188,7 +258,7 @@ btnConfirmarCarga.addEventListener("click", async () => {
   }
 });
 
-function mostrarResultadoValidacion(reporte) {
+function mostrarResultadoValidacion(reporte, configActual) {
   if (!reporte.length) {
     resultadoValidacion.innerHTML =
       '<div class="alert alert-warning">No se encontraron registros válidos.</div>';
@@ -200,15 +270,27 @@ function mostrarResultadoValidacion(reporte) {
     0
   );
 
+  const columnasResumen = configActual?.columnasResumen || [
+    { key: "codSector", titulo: "Sector" },
+  ];
+
+  const encabezados = columnasResumen
+    .map((columna) => `<th>${columna.titulo}</th>`)
+    .join("");
+
   const filas = reporte
-    .map(
-      (item) => `
+    .map((item) => {
+      const celdas = columnasResumen
+        .map((columna) => `<td>${item[columna.key] ?? "-"}</td>`)
+        .join("");
+
+      return `
         <tr>
-            <td>${item.codSector ?? "-"}</td>
+            ${celdas}
             <td class="text-end">${item.totalRegistros ?? 0}</td>
         </tr>
-    `
-    )
+    `;
+    })
     .join("");
 
   resultadoValidacion.innerHTML = `
@@ -219,7 +301,7 @@ function mostrarResultadoValidacion(reporte) {
             <table class="table table-sm mb-0">
                 <thead>
                     <tr>
-                        <th>Sector</th>
+                        ${encabezados}
                         <th class="text-end">Registros válidos</th>
                     </tr>
                 </thead>
@@ -248,53 +330,33 @@ btnLimpiarArchivo.addEventListener("click", () => {
 });
 
 function construirPayloadValidacion() {
+  const configActual = configuracionCapas[tablasGeograficas.value];
   const payload = {
     nombreCarpeta: nombreCarpetaActual,
-    codigoSector: "",
-    codigoManzana: "",
-    codigoLote: "",
   };
+
+  if (!configActual) {
+    return { payload, completo: true };
+  }
 
   let completo = true;
 
-  const selectSector = columnasArchivoShape.querySelector(
-    'select[name="map_cod_sector"]'
-  );
-  if (selectSector) {
-    payload.codigoSector = selectSector.value;
-    if (!selectSector.value) {
-      selectSector.classList.add("is-invalid");
-      completo = false;
-    } else {
-      selectSector.classList.remove("is-invalid");
-    }
-  }
+  configActual.campos.forEach((campo) => {
+    const select = columnasArchivoShape.querySelector(
+      `select[name="map_${campo.id}"]`
+    );
 
-  const selectManzana = columnasArchivoShape.querySelector(
-    'select[name="map_cod_mzna"]'
-  );
-  if (selectManzana) {
-    payload.codigoManzana = selectManzana.value;
-    if (!selectManzana.value) {
-      selectManzana.classList.add("is-invalid");
-      completo = false;
-    } else {
-      selectManzana.classList.remove("is-invalid");
-    }
-  }
+    if (!select) return;
 
-  const selectLote = columnasArchivoShape.querySelector(
-    'select[name="map_cod_lote"]'
-  );
-  if (selectLote) {
-    payload.codigoLote = selectLote.value;
-    if (!selectLote.value) {
-      selectLote.classList.add("is-invalid");
+    payload[campo.payloadKey] = select.value;
+
+    if (!select.value) {
+      select.classList.add("is-invalid");
       completo = false;
     } else {
-      selectLote.classList.remove("is-invalid");
+      select.classList.remove("is-invalid");
     }
-  }
+  });
 
   return { payload, completo };
 }
@@ -306,11 +368,23 @@ async function ejecutarValidacion(payload, payloadJson) {
       '<div class="alert alert-info">Validando shapefile...</div>';
     btnConfirmarCarga.style.display = "none";
 
-    const validarResp = await fetch(`${direccionApiGIS}validar_shapefile`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const configActual = configuracionCapas[tablasGeograficas.value];
+    if (!configActual) {
+      mostrarToast(
+        "La capa seleccionada no está configurada para validación.",
+        "warning"
+      );
+      return;
+    }
+
+    const validarResp = await fetch(
+      `${direccionApiGIS}${configActual.path}/validar_shapefile`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
 
     if (!validarResp.ok) throw new Error("Error al validar el archivo");
 
@@ -327,7 +401,10 @@ async function ejecutarValidacion(payload, payloadJson) {
     ultimoPayloadValidacion = payloadJson;
 
     mostrarToast(`✅ ${validarData.mensaje}`, "success");
-    mostrarResultadoValidacion(validarData.reporte || []);
+    mostrarResultadoValidacion(
+      validarData.reporte || [],
+      configuracionCapas[tablasGeograficas.value]
+    );
     btnConfirmarCarga.style.display = "block";
     btnConfirmarCarga.disabled = false;
   } catch (error) {
