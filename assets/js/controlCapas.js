@@ -21,6 +21,33 @@ const legendDiv = document.getElementById("legenda"),
   estilo = new Style({ stroke: new Stroke({ color: "red", width: 2 }) }),
   contenido = document.getElementById("popup-content");
 
+function formatearContenidoPopup(data) {
+  if (!data) return "<p>Sin información disponible.</p>";
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(data, "text/html");
+    const tabla = doc.querySelector("table");
+
+    if (tabla) {
+      tabla.classList.add("table", "table-sm", "table-striped", "mb-0");
+      const envoltorio = document.createElement("div");
+      envoltorio.classList.add("table-responsive", "popup-table-wrapper");
+      envoltorio.appendChild(tabla);
+
+      const contenedor = document.createElement("div");
+      contenedor.appendChild(envoltorio);
+      return contenedor.innerHTML;
+    }
+
+    const contenido = doc.body ? doc.body.innerHTML.trim() : "";
+    return contenido || "<p>Sin información disponible.</p>";
+  } catch (error) {
+    console.error("Error al procesar la respuesta de GetFeatureInfo:", error);
+    return "<p>Sin información disponible.</p>";
+  }
+}
+
 legendDiv.innerHTML = "<strong>Leyenda</strong>";
 legendDiv.innerHTML += colores[0].texto;
 legendDiv.innerHTML += colores[2].texto;
@@ -103,7 +130,7 @@ export function obtenerInformacion(e) {
   const coordenadas = e.coordinate;
   const resolucionVista = /** @type {number} */ (global.vista.getResolution());
 
-  if (activoInformacion == "lotes") {
+  if (global.activoInformacion === "lotes") {
     let lotes = buscarCapaId("lotes");
     const source = lotes.getSource();
     if (source instanceof ImageWMS) {
@@ -118,12 +145,15 @@ export function obtenerInformacion(e) {
         fetch(url)
           .then((response) => response.text())
           .then((data) => {
-            contenido.innerHTML = data;
+            contenido.innerHTML = formatearContenidoPopup(data);
             global.cubrir.setPosition(e.coordinate);
           })
-          .catch((error) =>
-            console.error("Error al obtener GetFeatureInfo:", error)
-          );
+          .catch((error) => {
+            console.error("Error al obtener GetFeatureInfo:", error);
+            contenido.innerHTML =
+              "<p>No se pudo obtener información del lote seleccionado.</p>";
+            global.cubrir.setPosition(e.coordinate);
+          });
       }
     }
   }
