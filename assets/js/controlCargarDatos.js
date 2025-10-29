@@ -7,7 +7,15 @@ const configuracionCapas = {
     campos: [
       { id: "cod_sector", payloadKey: "codigoSector", label: "COD_SECTOR" },
     ],
-    columnasResumen: [{ key: "codSector", titulo: "Sector" }],
+    columnasResumen: [
+      { key: "codSector", titulo: "Sector" },
+      {
+        key: "totalRegistros",
+        titulo: "Registros válidos",
+        className: "text-end",
+      },
+    ],
+    totalResumenKey: "totalRegistros",
   },
   "02": {
     path: "manzanas",
@@ -17,8 +25,13 @@ const configuracionCapas = {
     ],
     columnasResumen: [
       { key: "codSector", titulo: "Sector" },
-      { key: "codManzana", titulo: "Manzana" },
+      {
+        key: "totalRegistros",
+        titulo: "Total de manzanas válidas",
+        className: "text-end",
+      },
     ],
+    totalResumenKey: "totalRegistros",
   },
   "03": {
     path: "lotes",
@@ -29,9 +42,18 @@ const configuracionCapas = {
     ],
     columnasResumen: [
       { key: "codSector", titulo: "Sector" },
-      { key: "codManzana", titulo: "Manzana" },
-      { key: "codLote", titulo: "Lote" },
+      {
+        key: "totalManzanas",
+        titulo: "Total de manzanas",
+        className: "text-end",
+      },
+      {
+        key: "totalLotes",
+        titulo: "Total de lotes",
+        className: "text-end",
+      },
     ],
+    totalResumenKey: "totalLotes",
   },
 };
 
@@ -265,31 +287,49 @@ function mostrarResultadoValidacion(reporte, configActual) {
     return;
   }
 
+  const totalKey = configActual?.totalResumenKey || "totalRegistros";
   const total = reporte.reduce(
-    (sum, item) => sum + (Number(item.totalRegistros) || 0),
+    (sum, item) => sum + (Number(item[totalKey]) || 0),
     0
   );
 
-  const columnasResumen = configActual?.columnasResumen || [
-    { key: "codSector", titulo: "Sector" },
-  ];
+  const columnasResumen = configActual?.columnasResumen?.length
+    ? configActual.columnasResumen
+    : [
+        { key: "codSector", titulo: "Sector" },
+        {
+          key: totalKey,
+          titulo: "Registros válidos",
+          className: "text-end",
+        },
+      ];
 
   const encabezados = columnasResumen
-    .map((columna) => `<th>${columna.titulo}</th>`)
+    .map((columna) => {
+      const className = columna.className
+        ? ` class="${columna.className}"`
+        : "";
+      return `<th${className}>${columna.titulo}</th>`;
+    })
     .join("");
 
   const filas = reporte
     .map((item) => {
       const celdas = columnasResumen
-        .map((columna) => `<td>${item[columna.key] ?? "-"}</td>`)
+        .map((columna) => {
+          const valor =
+            typeof columna.obtenerValor === "function"
+              ? columna.obtenerValor(item)
+              : item[columna.key];
+          const contenido = valor ?? "-";
+          const className = columna.className
+            ? ` class="${columna.className}"`
+            : "";
+          return `<td${className}>${contenido}</td>`;
+        })
         .join("");
 
-      return `
-        <tr>
-            ${celdas}
-            <td class="text-end">${item.totalRegistros ?? 0}</td>
-        </tr>
-    `;
+      return `<tr>${celdas}</tr>`;
     })
     .join("");
 
@@ -302,7 +342,6 @@ function mostrarResultadoValidacion(reporte, configActual) {
                 <thead>
                     <tr>
                         ${encabezados}
-                        <th class="text-end">Registros válidos</th>
                     </tr>
                 </thead>
                 <tbody>
